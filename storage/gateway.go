@@ -8,14 +8,14 @@ type Gateway struct {
 	data map[string]*model.Gateway
 }
 
-func (g *Gateway) GetGateway(uuid string) {
+func (g *Gateway) Get(uuid string) {
 
 }
 
-func (g *Gateway) AddGateway(c *model.Gateway) string {
+func (g *Gateway) Add(c *model.Gateway) string {
 	return ""
 }
 
-func (g *Gateway) DeleteGateway(uuid string) {
+func (g *Gateway) Delete(uuid string) {
 
 }
