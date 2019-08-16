@@ -1,0 +1,1 @@
+# Golang SMPP v 3.4 message gateway microservice
