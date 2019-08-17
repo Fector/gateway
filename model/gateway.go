@@ -1,6 +1,8 @@
 package model
 
 type Gateway struct {
+	Uuid             string
+	Name             string
 	Host             string
 	Port             int
 	BindMode         string
@@ -11,4 +13,7 @@ type Gateway struct {
 	AddrTon          uint32
 	AddrNpi          uint32
 	AddressRange     string
+	IngressSize      int
+	EgressSize       int
+	EnquireLinkTime  int
 }

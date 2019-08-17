@@ -12,7 +12,7 @@ func NewService() (*Service, error) {
 }
 
 func (s *Service) Run() error {
-	go s.MessageStorage.CollectExpired()
+	go s.MessageStorage.Collect()
 
 	return nil
 }

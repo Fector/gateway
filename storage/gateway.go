@@ -12,7 +12,7 @@ func (g *Gateway) Get(uuid string) {
 
 }
 
-func (g *Gateway) Add(c *model.Gateway) string {
+func (g *Gateway) Put(c *model.Gateway) string {
 	return ""
 }
 
