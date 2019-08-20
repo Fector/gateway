@@ -7,14 +7,14 @@ import (
 )
 
 type Receiver struct {
-	Reader *io.Reader
-	Egress *chan pdu.Pdu
+	reader *io.Reader
+	egress *chan pdu.Pdu
 }
 
 func NewReceiver(c *net.TCPConn, e *chan pdu.Pdu) *Receiver {
 	return &Receiver{
-		Reader: io.NewReader(c),
-		Egress: e,
+		reader: io.NewReader(c),
+		egress: e,
 	}
 }
 

@@ -10,28 +10,28 @@ import (
 )
 
 type Connection struct {
-	Rx      *Receiver
-	Tx      *Transmitter
-	Gateway *model.Gateway
-	Context *Context
-	Logger  *Logger
-	Inbox   *chan model.Message
-	Stop    *chan int
-	Error   *chan error
+	rx      *Receiver
+	tx      *Transmitter
+	gateway *model.Gateway
+	context *Context
+	logger  *Logger
+	inbox   *chan model.Message
+	stop    *chan int
+	error   *chan error
 }
 
 func NewConnection(gateway *model.Gateway, inbox *chan model.Message, stop *chan int) (*Connection, error) {
 	return &Connection{
-		Gateway: gateway,
-		Context: &Context{},
-		Logger:  NewLogger(gateway.Name),
-		Inbox:   inbox,
-		Stop:    stop,
+		gateway: gateway,
+		context: &Context{},
+		logger:  NewLogger(gateway.Name),
+		inbox:   inbox,
+		stop:    stop,
 	}, nil
 }
 
 func (c *Connection) Connect() error {
-	addr := fmt.Sprintf("%s:%d", c.Gateway.Host, c.Gateway.Port)
+	addr := fmt.Sprintf("%s:%d", c.gateway.Host, c.gateway.Port)
 
 	d := net.Dialer{Timeout: 5 * time.Second}
 
@@ -47,11 +47,11 @@ func (c *Connection) Connect() error {
 		return errors.New("Unknown connection type ")
 	}
 
-	ingress := make(chan pdu.Pdu, c.Gateway.IngressSize)
-	egress := make(chan pdu.Pdu, c.Gateway.EgressSize)
+	ingress := make(chan pdu.Pdu, c.gateway.IngressSize)
+	egress := make(chan pdu.Pdu, c.gateway.EgressSize)
 
-	c.Rx = NewReceiver(tcpConn, &egress)
-	c.Tx = NewTransmitter(tcpConn, &ingress)
+	c.rx = NewReceiver(tcpConn, &egress)
+	c.tx = NewTransmitter(tcpConn, &ingress)
 
 	return nil
 }
@@ -61,7 +61,7 @@ func (c *Connection) Bind() error {
 }
 
 func (c *Connection) handlePdu(p *pdu.Pdu) {
-	*c.Tx.Ingress <- p
+	*c.tx.ingress <- p
 }
 
 func (c *Connection) handleMessage(m *model.Message) {
@@ -73,22 +73,22 @@ func (c *Connection) enquireLink() {
 }
 
 func (c *Connection) Run() error {
-	go c.Rx.Receive()
-	go c.Tx.Transmit()
+	go c.rx.Receive()
+	go c.tx.Transmit()
 
-	linkTimer := time.NewTicker(time.Duration(c.Gateway.EnquireLinkTime) * time.Second)
+	linkTimer := time.NewTicker(time.Duration(c.gateway.EnquireLinkTime) * time.Second)
 
 	for {
 		select {
-		case err := <-*c.Error:
+		case err := <-*c.error:
 			return err
-		case p := <-*c.Rx.Egress:
-			c.handlePdu(&p)
-		case m := <-*c.Inbox:
-			c.handleMessage(&m)
+		case p := <-*c.rx.egress:
+			go c.handlePdu(&p)
+		case m := <-*c.inbox:
+			go c.handleMessage(&m)
 		case <-linkTimer.C:
-			c.enquireLink()
-		case <-*c.Stop:
+			go c.enquireLink()
+		case <-*c.stop:
 			return errors.New("Stop flag received ")
 		}
 	}

@@ -7,14 +7,14 @@ import (
 )
 
 type Transmitter struct {
-	Writer  *io.Writer
-	Ingress *chan pdu.Pdu
+	writer  *io.Writer
+	ingress *chan pdu.Pdu
 }
 
 func NewTransmitter(c *net.TCPConn, i *chan pdu.Pdu) *Transmitter {
 	return &Transmitter{
-		Writer:  io.NewWriter(c),
-		Ingress: i,
+		writer:  io.NewWriter(c),
+		ingress: i,
 	}
 }
 
