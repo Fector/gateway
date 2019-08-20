@@ -94,7 +94,7 @@ func (a *Auth) Auth() error {
 		return err
 	}
 
-	err = a.conn.rx.reader.SetDeadline(time.Now().Add(time.Duration(1 * time.Second)))
+	err = a.conn.tx.writer.SetDeadline(time.Now().Add(time.Duration(1 * time.Second)))
 
 	if err != nil {
 		return err
