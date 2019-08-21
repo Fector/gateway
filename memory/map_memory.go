@@ -102,9 +102,8 @@ func (m *MapMemory) Restore(b *bytes.Buffer) error {
 	defer m.mutex.Unlock()
 	m.mutex.Lock()
 
-	d := gob.NewDecoder(b)
-
-	err := d.Decode(m.data)
+	dec := gob.NewDecoder(b)
+	err := dec.Decode(m.data)
 
 	if err != nil {
 		return err

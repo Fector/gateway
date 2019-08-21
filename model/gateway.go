@@ -1,7 +1,6 @@
 package model
 
 type Gateway struct {
-	Uuid             string
 	Name             string
 	Host             string
 	Port             int
