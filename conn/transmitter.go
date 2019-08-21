@@ -1,19 +1,19 @@
 package conn
 
 import (
-	"github.com/DeathHand/smpp/io"
 	"github.com/DeathHand/smpp/pdu"
+	"github.com/DeathHand/smpp/protocol"
 	"net"
 )
 
 type Transmitter struct {
-	writer  *io.Writer
+	writer  *protocol.Writer
 	ingress *chan pdu.Pdu
 }
 
 func NewTransmitter(c *net.TCPConn, i *chan pdu.Pdu) *Transmitter {
 	return &Transmitter{
-		writer:  io.NewWriter(c),
+		writer:  protocol.NewWriter(c),
 		ingress: i,
 	}
 }

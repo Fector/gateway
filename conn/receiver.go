@@ -1,19 +1,19 @@
 package conn
 
 import (
-	"github.com/DeathHand/smpp/io"
 	"github.com/DeathHand/smpp/pdu"
+	"github.com/DeathHand/smpp/protocol"
 	"net"
 )
 
 type Receiver struct {
-	reader *io.Reader
+	reader *protocol.Reader
 	egress *chan pdu.Pdu
 }
 
 func NewReceiver(c *net.TCPConn, e *chan pdu.Pdu) *Receiver {
 	return &Receiver{
-		reader: io.NewReader(c),
+		reader: protocol.NewReader(c),
 		egress: e,
 	}
 }

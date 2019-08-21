@@ -14,5 +14,7 @@ github.com/DeathHand/smpp v0.0.0-20190817080005-0949103067aa h1:6y5xBeders8XicGR
 github.com/DeathHand/smpp v0.0.0-20190817080005-0949103067aa/go.mod h1:87k3W6DK7mQXum4dhZpFnFT69GL80loVyqjECWxIT0g=
 github.com/DeathHand/smpp v0.0.0-20190817091716-0c15f1c2168f h1:GiiziBlK5za8lVHuzCmIED+Yy3+XKbIPjaZgMaKPLpg=
 github.com/DeathHand/smpp v0.0.0-20190817091716-0c15f1c2168f/go.mod h1:87k3W6DK7mQXum4dhZpFnFT69GL80loVyqjECWxIT0g=
+github.com/DeathHand/smpp v0.0.0-20190821082017-8c527bd3baa5 h1:GACeq4xG401O0Zm8yma4EKW2C7K4dAcwPS6WQy2Xl8E=
+github.com/DeathHand/smpp v0.0.0-20190821082017-8c527bd3baa5/go.mod h1:87k3W6DK7mQXum4dhZpFnFT69GL80loVyqjECWxIT0g=
 goji.io v2.0.2+incompatible h1:uIssv/elbKRLznFUy3Xj4+2Mz/qKhek/9aZQDUMae7c=
 goji.io v2.0.2+incompatible/go.mod h1:sbqFwrtqZACxLBTQcdgVjFh54yGVCvwq8+w49MVMMIk=
