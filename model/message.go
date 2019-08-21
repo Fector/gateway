@@ -5,6 +5,6 @@ import "github.com/DeathHand/smpp/pdu"
 type Message struct {
 	Uuid      string
 	Body      *pdu.Pdu
-	Ttl       int
+	Ttl       int64
 	Timestamp int64
 }
