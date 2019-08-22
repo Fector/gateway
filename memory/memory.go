@@ -6,5 +6,5 @@ type Memory interface {
 	Put(message *model.Message) (string, error)
 	Get(id string) (*model.Message, error)
 	Delete(id string) error
-	Observe() error
+	Observe()
 }
