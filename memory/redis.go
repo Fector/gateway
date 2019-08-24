@@ -5,7 +5,6 @@ import (
 	"errors"
 	"github.com/DeathHand/gateway/model"
 	"github.com/gomodule/redigo/redis"
-	"github.com/google/uuid"
 	"strings"
 	"time"
 )
@@ -14,6 +13,7 @@ type RedisMemory struct {
 	Memory
 	pool   *redis.Pool
 	errors *chan error
+	notify *chan model.Message
 }
 
 func NewRedisMemory(network string, addr string, pool int) (*RedisMemory, error) {
@@ -38,25 +38,20 @@ func NewRedisMemory(network string, addr string, pool int) (*RedisMemory, error)
 	}, nil
 }
 
-func (r *RedisMemory) Put(message *model.Message) (string, error) {
+func (r *RedisMemory) Put(message *model.Message) error {
 	m, err := json.Marshal(message)
 	if err != nil {
-		return "", err
+		return err
 	}
-	u, err := uuid.NewUUID()
-	if err != nil {
-		return "", err
-	}
-	id := u.String()
 	conn := r.pool.Get()
-	_, err = conn.Do("SETEX", id, m, message.Ttl)
+	_, err = conn.Do("SETEX", message.Uuid, m, message.Ttl)
 	if err != nil {
-		return "", err
+		return err
 	}
-	return id, nil
+	return nil
 }
 
-func (r *RedisMemory) Get(id string) (*model.Message, error) {
+func (r *RedisMemory) Get(uuid string) (*model.Message, error) {
 	conn := r.pool.Get()
 	data, err := redis.Bytes(conn.Do("GET"))
 	if err != nil {
@@ -70,9 +65,9 @@ func (r *RedisMemory) Get(id string) (*model.Message, error) {
 	return &message, nil
 }
 
-func (r *RedisMemory) Delete(id string) error {
+func (r *RedisMemory) Delete(uuid string) error {
 	conn := r.pool.Get()
-	_, err := conn.Do("DELETE", id)
+	_, err := conn.Do("DELETE", uuid)
 	if err != nil {
 		return err
 	}
@@ -81,26 +76,33 @@ func (r *RedisMemory) Delete(id string) error {
 
 func (r *RedisMemory) Observe() {
 	conn := r.pool.Get()
-	expired, err := redis.String(
-		conn.Do("SUBSCRIBE", "__keyevent@0__:expired"),
-	)
-	if err != nil {
-		*r.errors <- err
-		return
+	for {
+		expired, err := redis.String(
+			conn.Do("SUBSCRIBE", "__keyevent@0__:expired"),
+		)
+		if err != nil {
+			*r.errors <- err
+			return
+		}
+		ev := strings.Split(expired, ":")
+		if ev[1] == "" {
+			*r.errors <- errors.New("Unknown key expired ")
+		}
+		data, err := redis.Bytes(conn.Do("GET", ev[1]))
+		if err != nil {
+			*r.errors <- err
+			return
+		}
+		message := model.Message{}
+		err = json.Unmarshal(data, &message)
+		if err != nil {
+			*r.errors <- err
+			return
+		}
+		*r.notify <- message
 	}
-	ev := strings.Split(expired, ":")
-	if ev[1] == "" {
-		*r.errors <- errors.New("Unknown key expired ")
-	}
-	data, err := redis.Bytes(conn.Do("GET", ev[1]))
-	if err != nil {
-		*r.errors <- err
-		return
-	}
-	message := model.Message{}
-	err = json.Unmarshal(data, &message)
-	if err != nil {
-		*r.errors <- err
-		return
-	}
+}
+
+func (r *RedisMemory) Notify() *chan model.Message {
+	return r.notify
 }

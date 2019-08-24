@@ -8,31 +8,23 @@ import (
 	"time"
 )
 
-type Auth struct {
-	conn *Connection
-}
-
-func NewAuth(c *Connection) *Auth {
-	return &Auth{conn: c}
-}
-
-func (a *Auth) getBindPDU() (pdu.Pdu, error) {
-	switch a.conn.gateway.BindMode {
+func (c *Conn) getBindPdu() (pdu.Pdu, error) {
+	switch c.gateway.BindMode {
 	case protocol.BindModeRX:
 		return &pdu.BindReceiver{
 			Header: &pdu.Header{
 				CommandId:      protocol.BindReceiver,
 				CommandStatus:  protocol.EsmeRok,
-				SequenceNumber: a.conn.context.NextSequence(),
+				SequenceNumber: c.context.NextSequence(),
 			},
 			Body: &pdu.BindBody{
-				SystemId:         a.conn.gateway.SystemId,
-				Password:         a.conn.gateway.Password,
-				SystemType:       a.conn.gateway.SystemType,
-				InterfaceVersion: a.conn.gateway.InterfaceVersion,
-				AddrTon:          a.conn.gateway.AddrTon,
-				AddrNpi:          a.conn.gateway.AddrNpi,
-				AddressRange:     a.conn.gateway.AddressRange,
+				SystemId:         c.gateway.SystemId,
+				Password:         c.gateway.Password,
+				SystemType:       c.gateway.SystemType,
+				InterfaceVersion: c.gateway.InterfaceVersion,
+				AddrTon:          c.gateway.AddrTon,
+				AddrNpi:          c.gateway.AddrNpi,
+				AddressRange:     c.gateway.AddressRange,
 			},
 			Tlv: nil,
 		}, nil
@@ -41,16 +33,16 @@ func (a *Auth) getBindPDU() (pdu.Pdu, error) {
 			Header: &pdu.Header{
 				CommandId:      protocol.BindTransmitter,
 				CommandStatus:  protocol.EsmeRok,
-				SequenceNumber: a.conn.context.NextSequence(),
+				SequenceNumber: c.context.NextSequence(),
 			},
 			Body: &pdu.BindBody{
-				SystemId:         a.conn.gateway.SystemId,
-				Password:         a.conn.gateway.Password,
-				SystemType:       a.conn.gateway.SystemType,
-				InterfaceVersion: a.conn.gateway.InterfaceVersion,
-				AddrTon:          a.conn.gateway.AddrTon,
-				AddrNpi:          a.conn.gateway.AddrNpi,
-				AddressRange:     a.conn.gateway.AddressRange,
+				SystemId:         c.gateway.SystemId,
+				Password:         c.gateway.Password,
+				SystemType:       c.gateway.SystemType,
+				InterfaceVersion: c.gateway.InterfaceVersion,
+				AddrTon:          c.gateway.AddrTon,
+				AddrNpi:          c.gateway.AddrNpi,
+				AddressRange:     c.gateway.AddressRange,
 			},
 			Tlv: nil,
 		}, nil
@@ -59,73 +51,64 @@ func (a *Auth) getBindPDU() (pdu.Pdu, error) {
 			Header: &pdu.Header{
 				CommandId:      protocol.BindTransceiver,
 				CommandStatus:  protocol.EsmeRok,
-				SequenceNumber: a.conn.context.NextSequence(),
+				SequenceNumber: c.context.NextSequence(),
 			},
 			Body: &pdu.BindBody{
-				SystemId:         a.conn.gateway.SystemId,
-				Password:         a.conn.gateway.Password,
-				SystemType:       a.conn.gateway.SystemType,
-				InterfaceVersion: a.conn.gateway.InterfaceVersion,
-				AddrTon:          a.conn.gateway.AddrTon,
-				AddrNpi:          a.conn.gateway.AddrNpi,
-				AddressRange:     a.conn.gateway.AddressRange,
+				SystemId:         c.gateway.SystemId,
+				Password:         c.gateway.Password,
+				SystemType:       c.gateway.SystemType,
+				InterfaceVersion: c.gateway.InterfaceVersion,
+				AddrTon:          c.gateway.AddrTon,
+				AddrNpi:          c.gateway.AddrNpi,
+				AddressRange:     c.gateway.AddressRange,
 			},
 			Tlv: nil,
 		}, nil
 	}
-
 	return nil, errors.New("Unknown bind mode ")
 }
 
-func (a *Auth) checkBindResp(header *pdu.Header) error {
+func (c *Conn) checkBindResp(header *pdu.Header) error {
 	if header.CommandStatus != protocol.EsmeRok {
 		return errors.New(
 			fmt.Sprintf("Bind failed with code: %s", protocol.GetStatusName(header.CommandStatus)),
 		)
 	}
-
 	return nil
 }
 
-func (a *Auth) Auth() error {
-	req, err := a.getBindPDU()
-
+func (c *Conn) Bind() error {
+	req, err := c.getBindPdu()
 	if err != nil {
 		return err
 	}
-
-	err = a.conn.tx.writer.SetDeadline(time.Now().Add(time.Duration(1 * time.Second)))
-
+	err = c.SetDeadline(time.Now().Add(time.Duration(c.gateway.BindTimeout) * time.Second))
 	if err != nil {
 		return err
 	}
-
-	_, err = a.conn.tx.writer.WritePdu(&req)
-
+	_, err = c.tx.writer.WritePdu(&req)
 	if err != nil {
 		return err
 	}
-
-	err = a.conn.rx.reader.SetDeadline(time.Now().Add(time.Duration(1 * time.Second)))
-
+	err = c.SetDeadline(time.Now().Add(time.Duration(c.gateway.BindTimeout) * time.Second))
 	if err != nil {
 		return err
 	}
-
-	resp, err := a.conn.rx.reader.ReadPdu()
-
+	p, err := c.rx.reader.ReadPacket()
+	if err != nil {
+		return err
+	}
+	resp, err := c.rx.reader.ReadPdu(p)
 	switch p := resp.(type) {
 	case pdu.BindReceiverResp:
-		return a.checkBindResp(p.Header)
+		return c.checkBindResp(p.Header)
 	case pdu.BindTransceiverResp:
-		return a.checkBindResp(p.Header)
+		return c.checkBindResp(p.Header)
 	case pdu.BindTransmitterResp:
-		return a.checkBindResp(p.Header)
+		return c.checkBindResp(p.Header)
 	}
-
 	if err != nil {
 		return err
 	}
-
 	return nil
 }

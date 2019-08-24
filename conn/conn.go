@@ -9,30 +9,31 @@ import (
 	"time"
 )
 
-type Connection struct {
+type Conn struct {
+	*net.TCPConn
 	rx      *Receiver
 	tx      *Transmitter
 	gateway *model.Gateway
 	context *Context
-	logger  *Logger
 	inbox   *chan model.Message
+	outbox  *chan model.Message
 	timer   *time.Ticker
 	stop    *chan int
 	error   *chan error
 }
 
-func NewConnection(gateway *model.Gateway, inbox *chan model.Message, stop *chan int) (*Connection, error) {
-	return &Connection{
+func NewConnection(gateway *model.Gateway, inbox *chan model.Message, outbox *chan model.Message, stop *chan int) (*Conn, error) {
+	return &Conn{
 		gateway: gateway,
 		context: &Context{},
-		logger:  NewLogger(gateway.Name),
 		inbox:   inbox,
+		outbox:  outbox,
 		timer:   time.NewTicker(time.Duration(gateway.EnquireLinkTime) * time.Second),
 		stop:    stop,
 	}, nil
 }
 
-func (c *Connection) Connect() error {
+func (c *Conn) Connect() error {
 	addr := fmt.Sprintf("%s:%d", c.gateway.Host, c.gateway.Port)
 	d := net.Dialer{Timeout: 5 * time.Second}
 	conn, err := d.Dial("tcp", addr)
@@ -43,37 +44,34 @@ func (c *Connection) Connect() error {
 	if !isTcp {
 		return errors.New("Unknown connection type ")
 	}
-	ingress := make(chan pdu.Pdu, c.gateway.IngressSize)
-	egress := make(chan pdu.Pdu, c.gateway.EgressSize)
-	c.rx = NewReceiver(tcpConn, &egress)
-	c.tx = NewTransmitter(tcpConn, &ingress)
+	c.TCPConn = tcpConn
+	r := make(chan pdu.Pdu, c.gateway.ReadChanSize)
+	t := make(chan pdu.Pdu, c.gateway.WriteChanSize)
+	c.rx = NewReceiver(tcpConn, &r)
+	c.tx = NewTransmitter(tcpConn, &t)
 	return nil
 }
 
-func (c *Connection) Bind() error {
-	return NewAuth(c).Auth()
+func (c *Conn) handlePdu(p *pdu.Pdu) {
+	*c.tx.t <- p
 }
 
-func (c *Connection) handlePdu(p *pdu.Pdu) {
-	*c.tx.ingress <- p
-}
-
-func (c *Connection) handleMessage(m *model.Message) {
+func (c *Conn) handleMessage(m *model.Message) {
 
 }
 
-func (c *Connection) enquireLink() {
+func (c *Conn) enquireLink() {
 
 }
 
-func (c *Connection) Run() error {
+func (c *Conn) Run() error {
 	go c.rx.Receive()
 	go c.tx.Transmit()
 	for {
 		select {
 		case err := <-*c.error:
 			return err
-		case p := <-*c.rx.egress:
+		case p := <-*c.rx.r:
 			go c.handlePdu(&p)
 		case m := <-*c.inbox:
 			go c.handleMessage(&m)

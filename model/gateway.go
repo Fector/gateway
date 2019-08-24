@@ -5,6 +5,7 @@ type Gateway struct {
 	Host             string
 	Port             int
 	BindMode         string
+	BindTimeout      int
 	SystemId         string
 	Password         string
 	SystemType       string
@@ -12,7 +13,7 @@ type Gateway struct {
 	AddrTon          uint32
 	AddrNpi          uint32
 	AddressRange     string
-	IngressSize      int
-	EgressSize       int
+	ReadChanSize     int
+	WriteChanSize    int
 	EnquireLinkTime  int
 }

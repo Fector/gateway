@@ -6,8 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"github.com/DeathHand/gateway/model"
-	"github.com/google/uuid"
-	"log"
 	"os"
 	"sync"
 	"time"
@@ -15,11 +13,12 @@ import (
 
 type MapMemory struct {
 	Memory
-	data   map[string]*model.Message
+	data   map[string]model.Message
 	path   string
 	mutex  sync.Mutex
 	dump   *time.Ticker
 	expire *time.Ticker
+	notify *chan model.Message
 	errors *chan error
 }
 
@@ -38,33 +37,29 @@ func NewMemoryEngine(path string) (*MapMemory, error) {
 	}, nil
 }
 
-func (m *MapMemory) Put(message *model.Message) (string, error) {
+func (m *MapMemory) Put(message model.Message) error {
 	defer m.mutex.Unlock()
 	m.mutex.Lock()
-	id, err := uuid.NewUUID()
-	if err != nil {
-		return "", err
-	}
-	m.data[id.String()] = message
-	return id.String(), nil
+	m.data[message.Uuid] = message
+	return nil
 }
 
-func (m *MapMemory) Get(id string) (*model.Message, error) {
+func (m *MapMemory) Get(uuid string) (*model.Message, error) {
 	defer m.mutex.Unlock()
 	m.mutex.Lock()
-	if message, exists := m.data[id]; exists {
-		return message, nil
+	if message, exists := m.data[uuid]; exists {
+		return &message, nil
 	}
-	return nil, errors.New(fmt.Sprintf("%s not found ", id))
+	return nil, errors.New(fmt.Sprintf("%s not found ", uuid))
 }
 
-func (m *MapMemory) Delete(id string) error {
+func (m *MapMemory) Delete(uuid string) error {
 	defer m.mutex.Unlock()
 	m.mutex.Lock()
-	if _, exists := m.data[id]; exists {
-		delete(m.data, id)
+	if _, exists := m.data[uuid]; exists {
+		delete(m.data, uuid)
 	}
-	return errors.New(fmt.Sprintf("%s not found ", id))
+	return errors.New(fmt.Sprintf("%s not found ", uuid))
 }
 
 func (m *MapMemory) collect() {
@@ -72,8 +67,8 @@ func (m *MapMemory) collect() {
 	m.mutex.Lock()
 	for id, message := range m.data {
 		if time.Now().UnixNano() >= message.Timestamp+message.Ttl {
-			log.Println(fmt.Sprintf("%s expired", id))
 			delete(m.data, id)
+			*m.notify <- message
 		}
 	}
 }
@@ -101,10 +96,16 @@ func (m *MapMemory) Restore(b *bytes.Buffer) error {
 }
 
 func (m *MapMemory) Observe() {
-	select {
-	case <-m.dump.C:
-		m.save()
-	case <-m.expire.C:
-		m.collect()
+	for {
+		select {
+		case <-m.dump.C:
+			m.save()
+		case <-m.expire.C:
+			m.collect()
+		}
 	}
+}
+
+func (m *MapMemory) Notify() *chan model.Message {
+	return m.notify
 }

@@ -8,13 +8,13 @@ import (
 
 type Receiver struct {
 	reader *protocol.Reader
-	egress *chan pdu.Pdu
+	r      *chan pdu.Pdu
 }
 
-func NewReceiver(c *net.TCPConn, e *chan pdu.Pdu) *Receiver {
+func NewReceiver(c *net.TCPConn, r *chan pdu.Pdu) *Receiver {
 	return &Receiver{
 		reader: protocol.NewReader(c),
-		egress: e,
+		r:      r,
 	}
 }
 
