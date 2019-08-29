@@ -9,37 +9,44 @@ import (
 )
 
 type Router struct {
-	Ingress  map[string]*chan model.Message
-	Egress   map[string]*chan model.Message
-	Memory   memory.Memory
-	CallBack callback.Callback
+	ingress  map[string]*chan model.Message
+	egress   map[string]*chan model.Message
+	memory   memory.Memory
+	callback callback.Callback
 }
 
-// AddEgress is a new connection inbox setter
-func (r *Router) AddEgress(id string, e *chan model.Message) {
-	r.Egress[id] = e
+func NewRouter(
+	ingress map[string]*chan model.Message,
+	egress map[string]*chan model.Message,
+	memory memory.Memory,
+) *Router {
+	return &Router{
+		ingress: ingress,
+		egress:  egress,
+		memory:  memory,
+	}
 }
 
-func (r Router) MoIngress() {
-	m := <-*r.Ingress["mo"]
-	c, exists := r.Egress[m.Gateway]
+func (r *Router) MoIngress() {
+	m := <-*r.ingress["mo"]
+	c, exists := r.egress[m.Gateway]
 	if !exists {
 		log.Println(fmt.Sprintf("%s gateway does not exist or not connected", m.Gateway))
 	}
-	err := r.Memory.Put(&m)
+	err := r.memory.Put(&m)
 	if err != nil {
 		log.Println(err)
 	}
 	*c <- m
 }
 
-func (r Router) MtIngress() {
-	m := <-*r.Ingress["mt"]
-	c, exists := r.Egress[m.Gateway]
+func (r *Router) MtIngress() {
+	m := <-*r.ingress["mt"]
+	c, exists := r.egress[m.Gateway]
 	if !exists {
 		log.Println(fmt.Sprintf("%s gateway does not exist or not connected", m.Gateway))
 	}
-	err := r.Memory.Put(&m)
+	err := r.memory.Put(&m)
 	if err != nil {
 		log.Println(err)
 	}
@@ -47,8 +54,8 @@ func (r Router) MtIngress() {
 }
 
 func (r *Router) Notify() {
-	m := <-*r.Memory.Notify()
-	r.CallBack.Send(&m)
+	m := <-*r.memory.Notify()
+	r.callback.Send(&m)
 	log.Println(m.Uuid)
 }
 
@@ -56,4 +63,5 @@ func (r *Router) Run() {
 	go r.Notify()
 	go r.MtIngress()
 	go r.MoIngress()
+	go r.memory.Observe()
 }

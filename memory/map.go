@@ -22,7 +22,7 @@ type MapMemory struct {
 	errors *chan error
 }
 
-func NewMemoryEngine(path string) (*MapMemory, error) {
+func NewMapMemory(path string) (*MapMemory, error) {
 	info, err := os.Stat(path)
 	if err != nil {
 		return nil, err
@@ -37,10 +37,10 @@ func NewMemoryEngine(path string) (*MapMemory, error) {
 	}, nil
 }
 
-func (m *MapMemory) Put(message model.Message) error {
+func (m *MapMemory) Put(message *model.Message) error {
 	defer m.mutex.Unlock()
 	m.mutex.Lock()
-	m.data[message.Uuid] = message
+	m.data[message.Uuid] = *message
 	return nil
 }
 
