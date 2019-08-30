@@ -13,27 +13,28 @@ import (
 
 type MapMemory struct {
 	Memory
-	data   map[string]model.Message
-	path   string
-	mutex  sync.Mutex
-	dump   *time.Ticker
-	expire *time.Ticker
-	notify *chan model.Message
-	errors *chan error
+	data         map[string]model.Message
+	path         string
+	mutex        sync.Mutex
+	dumpTicker   *time.Ticker
+	expireTicker *time.Ticker
+	notify       *chan model.Message
+	errChan      *chan error
 }
 
-func NewMapMemory(path string) (*MapMemory, error) {
+func NewMapMemory(path string, e *chan error) (*MapMemory, error) {
 	info, err := os.Stat(path)
 	if err != nil {
 		return nil, err
 	}
 	if !info.IsDir() {
-		return nil, errors.New("Message engine path is not a directory ")
+		return nil, errors.New("Message service path is not a directory ")
 	}
 	return &MapMemory{
-		path:   path,
-		dump:   time.NewTicker(10 * time.Second),
-		expire: time.NewTicker(30 * time.Second),
+		path:         path,
+		dumpTicker:   time.NewTicker(10 * time.Second),
+		expireTicker: time.NewTicker(30 * time.Second),
+		errChan:      e,
 	}, nil
 }
 
@@ -62,7 +63,7 @@ func (m *MapMemory) Delete(uuid string) error {
 	return errors.New(fmt.Sprintf("%s not found ", uuid))
 }
 
-func (m *MapMemory) collect() {
+func (m *MapMemory) expire() {
 	defer m.mutex.Unlock()
 	m.mutex.Lock()
 	for id, message := range m.data {
@@ -73,14 +74,14 @@ func (m *MapMemory) collect() {
 	}
 }
 
-func (m *MapMemory) save() {
+func (m *MapMemory) dump() {
 	defer m.mutex.Unlock()
 	m.mutex.Lock()
 	var b bytes.Buffer
 	enc := gob.NewEncoder(&b)
 	err := enc.Encode(m.data)
 	if err != nil {
-		*m.errors <- err
+		*m.errChan <- err
 	}
 }
 
@@ -95,13 +96,13 @@ func (m *MapMemory) Restore(b *bytes.Buffer) error {
 	return nil
 }
 
-func (m *MapMemory) Observe() {
+func (m *MapMemory) Run() {
 	for {
 		select {
-		case <-m.dump.C:
-			m.save()
-		case <-m.expire.C:
-			m.collect()
+		case <-m.dumpTicker.C:
+			m.dump()
+		case <-m.expireTicker.C:
+			m.expire()
 		}
 	}
 }

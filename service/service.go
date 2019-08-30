@@ -8,26 +8,30 @@ import (
 )
 
 type Service struct {
-	config *Config
-	error  *chan error
+	Ingress *chan model.Message
+	Egress  *chan model.Message
+	Memory  memory.Memory
+	ErrChan *chan error
 }
 
-func (s *Service) Run() error {
-	ingress := map[string]*chan model.Message{}
-	egress := map[string]*chan model.Message{}
-	mtIngress := make(chan model.Message, s.config.MtIngressSize)
-	moIngress := make(chan model.Message, s.config.MoIngressSize)
-	mtEgress := make(chan model.Message, s.config.MtEgressSize)
-	moEgress := make(chan model.Message, s.config.MoEgressSize)
-	ingress["mt"] = &mtIngress
-	ingress["mo"] = &moIngress
-	egress["mt"] = &mtEgress
-	egress["mo"] = &moEgress
-	m, err := memory.NewMapMemory("/var/lib/memory")
+func New(c *Config) (*Service, error) {
+	ingress := make(chan model.Message, c.IngressSize)
+	egress := make(chan model.Message, c.EgressSize)
+	errChan := make(chan error, 1)
+	m, err := memory.NewMapMemory("/var/lib/memory", &errChan)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	go router.NewRouter(ingress, egress, m).Run()
-	go api.NewApi(ingress["mt"], m).Serve()
-	return nil
+	return &Service{
+		Ingress: &ingress,
+		Egress:  &egress,
+		Memory:  m,
+		ErrChan: &errChan,
+	}, nil
+}
+
+func (s *Service) Run() {
+	go s.Memory.Run()
+	go router.NewRouter(s).Run()
+	go api.NewApi(s).Serve()
 }

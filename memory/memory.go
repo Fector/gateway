@@ -20,5 +20,5 @@ type Memory interface {
 	Get(uuid string) (*model.Message, error)
 	Delete(uuid string) error
 	Notify() *chan model.Message
-	Observe()
+	Run()
 }

@@ -12,12 +12,11 @@ import (
 type RedisMemory struct {
 	Memory
 	pool   *redis.Pool
-	errors *chan error
 	notify *chan model.Message
+	errors *chan error
 }
 
-func NewRedisMemory(network string, addr string, pool int) (*RedisMemory, error) {
-	e := make(chan error, 1)
+func NewRedisMemory(network string, addr string, pool int, errors *chan error) (*RedisMemory, error) {
 	return &RedisMemory{
 		pool: &redis.Pool{
 			MaxActive:   pool,
@@ -34,7 +33,7 @@ func NewRedisMemory(network string, addr string, pool int) (*RedisMemory, error)
 				return err
 			},
 		},
-		errors: &e,
+		errors: errors,
 	}, nil
 }
 
@@ -74,7 +73,7 @@ func (r *RedisMemory) Delete(uuid string) error {
 	return nil
 }
 
-func (r *RedisMemory) Observe() {
+func (r *RedisMemory) Run() {
 	conn := r.pool.Get()
 	for {
 		expired, err := redis.String(

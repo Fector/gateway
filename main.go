@@ -6,11 +6,9 @@ import (
 )
 
 func main() {
-	s, err := service.NewService()
-
+	s, err := service.New(&service.Config{})
 	if err != nil {
 		log.Fatal(err)
 	}
-
-	log.Fatal(s.Run())
+	log.Fatal(<-*s.ErrChan)
 }
