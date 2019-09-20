@@ -16,8 +16,8 @@ type Conn struct {
 	*net.TCPConn
 	SequenceNumber *uint32
 	LastPacketTime *int64
-	rx             *protocol.Receiver
-	tx             *protocol.Transmitter
+	rx             *protocol.Reader
+	tx             *protocol.Writer
 	gateway        *model.Gateway
 	inbox          *chan model.Message
 	outbox         *chan model.Message
@@ -60,10 +60,8 @@ func (c *Conn) Connect() error {
 		return errors.New("Unknown connection type ")
 	}
 	c.TCPConn = tcpConn
-	r := make(chan pdu.Pdu, c.gateway.ReadChanSize)
-	t := make(chan pdu.Pdu, c.gateway.WriteChanSize)
-	c.rx = protocol.NewReceiver(tcpConn, &r)
-	c.tx = protocol.NewTransmitter(tcpConn, &t)
+	c.rx = protocol.NewReader(tcpConn)
+	c.tx = protocol.NewWriter(tcpConn)
 	return nil
 }
 
@@ -145,7 +143,7 @@ func (c *Conn) Bind() error {
 	if err != nil {
 		return err
 	}
-	_, err = c.tx.W.WritePdu(&req)
+	_, err = c.tx.WritePdu(&req)
 	if err != nil {
 		return err
 	}
@@ -153,11 +151,11 @@ func (c *Conn) Bind() error {
 	if err != nil {
 		return err
 	}
-	p, err := c.rx.R.ReadPacket()
+	p, err := c.rx.ReadPacket()
 	if err != nil {
 		return err
 	}
-	resp, err := c.rx.R.ReadPdu(p)
+	resp, err := c.rx.ReadPdu(p)
 	switch p := resp.(type) {
 	case pdu.BindReceiverResp:
 		return c.checkBindResp(p.Header)
@@ -172,10 +170,6 @@ func (c *Conn) Bind() error {
 	return nil
 }
 
-func (c *Conn) handlePdu(p *pdu.Pdu) {
-	*c.tx.P <- p
-}
-
 func (c *Conn) handleMessage(m *model.Message) {
 
 }
@@ -185,14 +179,10 @@ func (c *Conn) enquireLink() {
 }
 
 func (c *Conn) Run() error {
-	go c.rx.Receive()
-	go c.tx.Transmit()
 	for {
 		select {
 		case err := <-*c.error:
 			return err
-		case p := <-*c.rx.P:
-			go c.handlePdu(&p)
 		case m := <-*c.inbox:
 			go c.handleMessage(&m)
 		case <-c.timer.C:

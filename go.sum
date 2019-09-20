@@ -1,5 +1,7 @@
 github.com/DeathHand/smpp v0.0.0-20190920141245-638ec06a3e3b h1:WhA54AoFzud3IBw3j+NZG/TjoeKavfHltrTbBpoIqRg=
 github.com/DeathHand/smpp v0.0.0-20190920141245-638ec06a3e3b/go.mod h1:87k3W6DK7mQXum4dhZpFnFT69GL80loVyqjECWxIT0g=
+github.com/DeathHand/smpp v0.0.0-20190920143909-e4a445f73829 h1:pqQzjnwmKsFrTLTY9Cx9+7uLwaBIVulUMSsUpPUKvhk=
+github.com/DeathHand/smpp v0.0.0-20190920143909-e4a445f73829/go.mod h1:87k3W6DK7mQXum4dhZpFnFT69GL80loVyqjECWxIT0g=
 github.com/gomodule/redigo v2.0.0+incompatible h1:K/R+8tc58AaqLkqG2Ol3Qk+DR/TlNuhuh457pBFPtt0=
 github.com/gomodule/redigo v2.0.0+incompatible/go.mod h1:B4C85qUVwatsJoIUNIfCRsp7qO0iAmpGFZ4EELWSbC4=
 goji.io v2.0.2+incompatible h1:uIssv/elbKRLznFUy3Xj4+2Mz/qKhek/9aZQDUMae7c=
