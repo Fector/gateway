@@ -8,4 +8,5 @@ type Message struct {
 	Body      *pdu.Pdu
 	Ttl       int64
 	Timestamp int64
+	Callback  string
 }
