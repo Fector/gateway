@@ -11,14 +11,14 @@ type Service struct {
 	Ingress *chan model.Message
 	Egress  *chan model.Message
 	Memory  memory.Memory
-	ErrChan *chan error
+	Error   *chan error
 }
 
 func New(c *Config) (*Service, error) {
 	ingress := make(chan model.Message, c.IngressSize)
 	egress := make(chan model.Message, c.EgressSize)
-	errChan := make(chan error, 1)
-	m, err := memory.NewMapMemory("/var/lib/memory", &errChan)
+	errors := make(chan error, 1)
+	m, err := memory.NewMapMemory("/var/lib/memory", &errors)
 	if err != nil {
 		return nil, err
 	}
@@ -26,7 +26,7 @@ func New(c *Config) (*Service, error) {
 		Ingress: &ingress,
 		Egress:  &egress,
 		Memory:  m,
-		ErrChan: &errChan,
+		Error:   &errors,
 	}, nil
 }
 

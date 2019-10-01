@@ -12,7 +12,7 @@ type Router struct {
 	egress   *chan model.Message
 	memory   memory.Memory
 	callback callback.Callback
-	errChan  *chan error
+	error    *chan error
 }
 
 func NewRouter(s *service.Service) *Router {
@@ -20,8 +20,8 @@ func NewRouter(s *service.Service) *Router {
 		ingress:  s.Ingress,
 		egress:   s.Egress,
 		memory:   s.Memory,
-		callback: callback.NewHttpCallback(),
-		errChan:  s.ErrChan,
+		callback: callback.NewHttpCallback(s.Error),
+		error:    s.Error,
 	}
 }
 

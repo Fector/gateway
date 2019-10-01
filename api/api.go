@@ -14,7 +14,7 @@ type Api struct {
 
 func NewApi(s *service.Service) *Api {
 	mux := goji.NewMux()
-	m := NewMessageHandler(s.Ingress, &s.Memory)
+	m := NewMessageHandler(s.Ingress, &s.Memory, s.Error)
 	mux.HandleFunc(pat.Get("/message/:id"), m.get)
 	mux.HandleFunc(pat.Post("/message"), m.post)
 	mux.HandleFunc(pat.Put("/message/:id"), m.put)

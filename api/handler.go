@@ -9,12 +9,14 @@ import (
 type MessageHandler struct {
 	ingress *chan model.Message
 	memory  *memory.Memory
+	error   *chan error
 }
 
-func NewMessageHandler(ingress *chan model.Message, memory *memory.Memory) *MessageHandler {
+func NewMessageHandler(ingress *chan model.Message, memory *memory.Memory, error *chan error) *MessageHandler {
 	return &MessageHandler{
 		ingress: ingress,
 		memory:  memory,
+		error:   error,
 	}
 }
 

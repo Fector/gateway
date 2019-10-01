@@ -10,5 +10,5 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	log.Fatal(<-*s.ErrChan)
+	log.Fatal(<-*s.Error)
 }

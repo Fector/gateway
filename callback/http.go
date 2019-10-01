@@ -12,14 +12,14 @@ import (
 type HttpCallback struct {
 	Callback
 	*http.Client
-	notify  *chan model.Message
-	errChan *chan error
+	notify *chan model.Message
+	error  *chan error
 }
 
 func (c *HttpCallback) closeRespBody(resp *http.Response) {
 	err := resp.Body.Close()
 	if err != nil {
-		*c.errChan <- err
+		*c.error <- err
 		return
 	}
 }
@@ -27,23 +27,23 @@ func (c *HttpCallback) closeRespBody(resp *http.Response) {
 func (c *HttpCallback) send(message *model.Message) {
 	data, err := json.Marshal(message)
 	if err != nil {
-		*c.errChan <- err
+		*c.error <- err
 		return
 	}
 	req, err := http.NewRequest("POST", message.Callback, bytes.NewBuffer(data))
 	if err != nil {
-		*c.errChan <- err
+		*c.error <- err
 		return
 	}
 	resp, err := c.Do(req)
 	defer c.closeRespBody(resp)
 	if err != nil {
-		*c.errChan <- err
+		*c.error <- err
 		return
 	}
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		*c.errChan <- err
+		*c.error <- err
 		return
 	}
 	log.Println(body)
@@ -60,12 +60,9 @@ func (c *HttpCallback) Run() {
 	}
 }
 
-func (c *HttpCallback) Error() *chan error {
-	return c.errChan
-}
-
-func NewHttpCallback() *HttpCallback {
+func NewHttpCallback(error *chan error) *HttpCallback {
 	return &HttpCallback{
 		Client: &http.Client{},
+		error:  error,
 	}
 }

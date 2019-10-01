@@ -19,10 +19,10 @@ type MapMemory struct {
 	dumpTicker   *time.Ticker
 	expireTicker *time.Ticker
 	notify       *chan model.Message
-	errChan      *chan error
+	error        *chan error
 }
 
-func NewMapMemory(path string, e *chan error) (*MapMemory, error) {
+func NewMapMemory(path string, error *chan error) (*MapMemory, error) {
 	info, err := os.Stat(path)
 	if err != nil {
 		return nil, err
@@ -34,7 +34,7 @@ func NewMapMemory(path string, e *chan error) (*MapMemory, error) {
 		path:         path,
 		dumpTicker:   time.NewTicker(10 * time.Second),
 		expireTicker: time.NewTicker(30 * time.Second),
-		errChan:      e,
+		error:        error,
 	}, nil
 }
 
@@ -81,7 +81,7 @@ func (m *MapMemory) dump() {
 	enc := gob.NewEncoder(&b)
 	err := enc.Encode(m.data)
 	if err != nil {
-		*m.errChan <- err
+		*m.error <- err
 	}
 }
 

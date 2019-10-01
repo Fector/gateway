@@ -11,12 +11,12 @@ import (
 
 type RedisMemory struct {
 	Memory
-	pool    *redis.Pool
-	notify  *chan model.Message
-	errChan *chan error
+	pool   *redis.Pool
+	notify *chan model.Message
+	Error  *chan error
 }
 
-func NewRedisMemory(network string, addr string, pool int, errors *chan error) (*RedisMemory, error) {
+func NewRedisMemory(network string, addr string, pool int, e *chan error) (*RedisMemory, error) {
 	return &RedisMemory{
 		pool: &redis.Pool{
 			MaxActive:   pool,
@@ -33,7 +33,7 @@ func NewRedisMemory(network string, addr string, pool int, errors *chan error) (
 				return err
 			},
 		},
-		errChan: errors,
+		Error: e,
 	}, nil
 }
 
@@ -80,22 +80,22 @@ func (r *RedisMemory) Run() {
 			conn.Do("SUBSCRIBE", "__keyevent@0__:expired"),
 		)
 		if err != nil {
-			*r.errChan <- err
+			*r.Error <- err
 			return
 		}
 		ev := strings.Split(expired, ":")
 		if ev[1] == "" {
-			*r.errChan <- errors.New("Unknown key expired ")
+			*r.Error <- errors.New("Unknown key expired ")
 		}
 		data, err := redis.Bytes(conn.Do("GET", ev[1]))
 		if err != nil {
-			*r.errChan <- err
+			*r.Error <- err
 			return
 		}
 		message := model.Message{}
 		err = json.Unmarshal(data, &message)
 		if err != nil {
-			*r.errChan <- err
+			*r.Error <- err
 			return
 		}
 		*r.notify <- message
