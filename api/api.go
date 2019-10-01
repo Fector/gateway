@@ -12,9 +12,9 @@ type Api struct {
 	*goji.Mux
 }
 
-func NewApi(e *service.Service) *Api {
+func NewApi(s *service.Service) *Api {
 	mux := goji.NewMux()
-	m := NewMessageHandler(e.Ingress, &e.Memory)
+	m := NewMessageHandler(s.Ingress, &s.Memory)
 	mux.HandleFunc(pat.Get("/message/:id"), m.get)
 	mux.HandleFunc(pat.Post("/message"), m.post)
 	mux.HandleFunc(pat.Put("/message/:id"), m.put)
