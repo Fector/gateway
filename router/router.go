@@ -26,19 +26,11 @@ func NewRouter(s *service.Service) *Router {
 }
 
 func (r *Router) Ingress() {
-	message := <-*r.ingress
-
-	switch message.Type {
-
-	}
 }
 
 func (r *Router) Egress() {
 	message := <-*r.egress
-
-	switch message.Type {
-
-	}
+	r.callback.Add(&message)
 }
 
 func (r *Router) Run() {

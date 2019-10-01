@@ -2,6 +2,9 @@ package model
 
 import "github.com/DeathHand/smpp/pdu"
 
+const MessageTypeMT = "MT"
+const MessageTypeMO = "MO"
+
 type Message struct {
 	Uuid      string
 	Gateway   string
