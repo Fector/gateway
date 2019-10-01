@@ -12,6 +12,7 @@ import (
 type HttpCallback struct {
 	Callback
 	*http.Client
+	notify  *chan model.Message
 	errChan *chan error
 }
 
@@ -23,7 +24,7 @@ func (c *HttpCallback) closeRespBody(resp *http.Response) {
 	}
 }
 
-func (c *HttpCallback) Send(message *model.Message) {
+func (c *HttpCallback) send(message *model.Message) {
 	data, err := json.Marshal(message)
 	if err != nil {
 		*c.errChan <- err
@@ -46,6 +47,17 @@ func (c *HttpCallback) Send(message *model.Message) {
 		return
 	}
 	log.Println(body)
+}
+
+func (c *HttpCallback) Add(message *model.Message) {
+	*c.notify <- *message
+}
+
+func (c *HttpCallback) Run() {
+	for {
+		message := <-*c.notify
+		c.send(&message)
+	}
 }
 
 func (c *HttpCallback) Error() *chan error {

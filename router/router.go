@@ -25,13 +25,6 @@ func NewRouter(s *service.Service) *Router {
 	}
 }
 
-func (r *Router) Callback() {
-	for {
-		m := <-*r.memory.Notify()
-		go r.callback.Send(&m)
-	}
-}
-
 func (r *Router) Run() {
-	go r.Callback()
+	go r.callback.Run()
 }

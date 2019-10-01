@@ -23,7 +23,7 @@ type Conn struct {
 	outbox         *chan model.Message
 	timer          *time.Ticker
 	stop           *chan int
-	error          *chan error
+	errChan        *chan error
 }
 
 func NewConnection(gateway *model.Gateway, inbox *chan model.Message, outbox *chan model.Message, stop *chan int) (*Conn, error) {
@@ -181,7 +181,7 @@ func (c *Conn) enquireLink() {
 func (c *Conn) Run() error {
 	for {
 		select {
-		case err := <-*c.error:
+		case err := <-*c.errChan:
 			return err
 		case m := <-*c.inbox:
 			go c.handleMessage(&m)
