@@ -12,7 +12,11 @@ type MessageHandler struct {
 	error   *chan error
 }
 
-func NewMessageHandler(ingress *chan model.Message, memory *memory.Memory, error *chan error) *MessageHandler {
+func NewMessageHandler(
+	ingress *chan model.Message,
+	memory *memory.Memory,
+	error *chan error,
+) *MessageHandler {
 	return &MessageHandler{
 		ingress: ingress,
 		memory:  memory,

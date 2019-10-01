@@ -1,7 +1,8 @@
 package api
 
 import (
-	"github.com/DeathHand/gateway/service"
+	"github.com/DeathHand/gateway/memory"
+	"github.com/DeathHand/gateway/model"
 	goji "goji.io"
 	"goji.io/pat"
 	"log"
@@ -12,9 +13,13 @@ type Api struct {
 	*goji.Mux
 }
 
-func NewApi(s *service.Service) *Api {
+func NewApi(
+	ingress *chan model.Message,
+	memory memory.Memory,
+	error *chan error,
+) *Api {
 	mux := goji.NewMux()
-	m := NewMessageHandler(s.Ingress, &s.Memory, s.Error)
+	m := NewMessageHandler(ingress, &memory, error)
 	mux.HandleFunc(pat.Get("/message/:id"), m.get)
 	mux.HandleFunc(pat.Post("/message"), m.post)
 	mux.HandleFunc(pat.Put("/message/:id"), m.put)

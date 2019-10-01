@@ -15,9 +15,9 @@ type Service struct {
 }
 
 func New(c *Config) (*Service, error) {
+	errors := make(chan error, 1)
 	ingress := make(chan model.Message, c.IngressSize)
 	egress := make(chan model.Message, c.EgressSize)
-	errors := make(chan error, 1)
 	m, err := memory.NewMapMemory("/var/lib/memory", &errors)
 	if err != nil {
 		return nil, err
@@ -32,6 +32,6 @@ func New(c *Config) (*Service, error) {
 
 func (s *Service) Run() {
 	go s.Memory.Run()
-	go router.NewRouter(s).Run()
-	go api.NewApi(s).Serve()
+	go router.NewRouter(s.Ingress, s.Egress, s.Memory, s.Error).Run()
+	go api.NewApi(s.Ingress, s.Memory, s.Error).Serve()
 }
