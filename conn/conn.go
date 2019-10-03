@@ -43,6 +43,14 @@ func NewConnection(
 	}, nil
 }
 
+func (c *Conn) Gateway() *model.Gateway {
+	return c.gateway
+}
+
+func (c *Conn) SendMessage(message *model.Message) {
+	*c.inbox <- *message
+}
+
 func (c *Conn) NextSequence() uint32 {
 	return atomic.AddUint32(c.SequenceNumber, 1)
 }
@@ -70,6 +78,10 @@ func (c *Conn) Connect() error {
 	c.rx = protocol.NewReader(tcpConn)
 	c.tx = protocol.NewWriter(tcpConn)
 	return nil
+}
+
+func (c *Conn) Stop() {
+	*c.stop <- 1
 }
 
 func (c *Conn) getBindPdu() (pdu.Pdu, error) {
@@ -185,7 +197,7 @@ func (c *Conn) enquireLink() {
 
 }
 
-func (c *Conn) Run() error {
+func (c *Conn) Run() {
 	for {
 		select {
 		case m := <-*c.inbox:
@@ -193,7 +205,7 @@ func (c *Conn) Run() error {
 		case <-c.timer.C:
 			go c.enquireLink()
 		case <-*c.stop:
-			return errors.New("Stop flag received ")
+			*c.error <- errors.New("Stop flag received ")
 		}
 	}
 }
