@@ -2,12 +2,14 @@ package service
 
 import (
 	"github.com/DeathHand/gateway/api"
+	"github.com/DeathHand/gateway/connection"
 	"github.com/DeathHand/gateway/memory"
 	"github.com/DeathHand/gateway/model"
 	"github.com/DeathHand/gateway/router"
 )
 
 type Service struct {
+	Config  *Config
 	Ingress *chan model.Message
 	Egress  *chan model.Message
 	Memory  memory.Memory
@@ -23,6 +25,7 @@ func New(c *Config) (*Service, error) {
 		return nil, err
 	}
 	return &Service{
+		Config:  c,
 		Ingress: &ingress,
 		Egress:  &egress,
 		Memory:  m,
@@ -33,5 +36,6 @@ func New(c *Config) (*Service, error) {
 func (s *Service) Run() {
 	go s.Memory.Run()
 	go router.NewRouter(s.Ingress, s.Egress, s.Memory, s.Error).Run()
-	go api.NewApi(s.Ingress, s.Memory, s.Error).Serve()
+	go api.NewApi(s.Ingress, s.Memory, s.Error).Run()
+	go connection.NewConnector(s.Config.Gateways, s.Error).Run()
 }

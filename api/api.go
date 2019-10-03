@@ -28,6 +28,6 @@ func NewApi(
 	return &Api{Mux: mux}
 }
 
-func (a *Api) Serve() {
+func (a *Api) Run() {
 	log.Fatal(http.ListenAndServe("localhost:8000", a.Mux))
 }

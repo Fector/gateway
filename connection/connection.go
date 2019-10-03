@@ -1,4 +1,4 @@
-package conn
+package connection
 
 import (
 	"errors"
@@ -12,7 +12,7 @@ import (
 	"time"
 )
 
-type Conn struct {
+type Connection struct {
 	*net.TCPConn
 	SequenceNumber *uint32
 	LastPacketTime *int64
@@ -32,8 +32,8 @@ func NewConnection(
 	outbox *chan model.Message,
 	stop *chan int,
 	error *chan error,
-) (*Conn, error) {
-	return &Conn{
+) (*Connection, error) {
+	return &Connection{
 		gateway: gateway,
 		inbox:   inbox,
 		outbox:  outbox,
@@ -43,27 +43,27 @@ func NewConnection(
 	}, nil
 }
 
-func (c *Conn) Gateway() *model.Gateway {
+func (c *Connection) Gateway() *model.Gateway {
 	return c.gateway
 }
 
-func (c *Conn) SendMessage(message *model.Message) {
+func (c *Connection) SendMessage(message *model.Message) {
 	*c.inbox <- *message
 }
 
-func (c *Conn) NextSequence() uint32 {
+func (c *Connection) NextSequence() uint32 {
 	return atomic.AddUint32(c.SequenceNumber, 1)
 }
 
-func (c *Conn) UpdateTime() {
+func (c *Connection) UpdateTime() {
 	atomic.StoreInt64(c.LastPacketTime, time.Now().UnixNano())
 }
 
-func (c *Conn) Log(v ...interface{}) {
+func (c *Connection) Log(v ...interface{}) {
 	log.Println(fmt.Sprintf("[gateway:%s] ", c.gateway.Name), v)
 }
 
-func (c *Conn) Connect() error {
+func (c *Connection) Connect() error {
 	addr := fmt.Sprintf("%s:%d", c.gateway.Host, c.gateway.Port)
 	d := net.Dialer{Timeout: 5 * time.Second}
 	conn, err := d.Dial("tcp", addr)
@@ -80,11 +80,11 @@ func (c *Conn) Connect() error {
 	return nil
 }
 
-func (c *Conn) Stop() {
+func (c *Connection) Stop() {
 	*c.stop <- 1
 }
 
-func (c *Conn) getBindPdu() (pdu.Pdu, error) {
+func (c *Connection) getBindPdu() (pdu.Pdu, error) {
 	switch c.gateway.BindMode {
 	case protocol.BindModeRX:
 		return &pdu.BindReceiver{
@@ -144,7 +144,7 @@ func (c *Conn) getBindPdu() (pdu.Pdu, error) {
 	return nil, errors.New("Unknown bind mode ")
 }
 
-func (c *Conn) checkBindResp(header *pdu.Header) error {
+func (c *Connection) checkBindResp(header *pdu.Header) error {
 	if header.CommandStatus != protocol.EsmeRok {
 		return errors.New(
 			fmt.Sprintf("Bind failed with code: %s", protocol.GetStatusName(header.CommandStatus)),
@@ -153,7 +153,7 @@ func (c *Conn) checkBindResp(header *pdu.Header) error {
 	return nil
 }
 
-func (c *Conn) Bind() error {
+func (c *Connection) Bind() error {
 	req, err := c.getBindPdu()
 	if err != nil {
 		return err
@@ -189,15 +189,15 @@ func (c *Conn) Bind() error {
 	return nil
 }
 
-func (c *Conn) handleMessage(m *model.Message) {
+func (c *Connection) handleMessage(m *model.Message) {
 
 }
 
-func (c *Conn) enquireLink() {
+func (c *Connection) enquireLink() {
 
 }
 
-func (c *Conn) Run() {
+func (c *Connection) Run() {
 	for {
 		select {
 		case m := <-*c.inbox:
