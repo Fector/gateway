@@ -35,7 +35,7 @@ func New(c *Config) (*Service, error) {
 
 func (s *Service) Run() {
 	go s.Memory.Run()
-	go router.NewRouter(s.Ingress, s.Egress, s.Memory, s.Error).Run()
 	go api.NewApi(s.Ingress, s.Memory, s.Error).Run()
 	go connection.NewConnector(s.Config.Gateways, s.Error).Run()
+	go router.NewRouter(s.Ingress, s.Egress, s.Memory, s.Error).Run()
 }
