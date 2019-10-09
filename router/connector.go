@@ -42,8 +42,8 @@ func (c *Connector) GetConnection(gateway string) (*connection.Connection, error
 // StartConnection starts connection by gateway name
 func (c *Connector) StartConnection(gateway *model.Gateway) error {
 	stop := make(chan int, 1)
-	inbox := make(chan model.Message, gateway.InboxSize)
-	conn, err := connection.NewConnection(gateway, &inbox, c.egress, &stop, c.Error)
+	ingress := make(chan model.Message, gateway.InboxSize)
+	conn, err := connection.NewConnection(gateway, &ingress, c.egress, &stop, c.Error)
 	if err != nil {
 		return err
 	}
