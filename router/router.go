@@ -51,7 +51,7 @@ func (r *Router) Ingress() {
 			*r.egress <- message
 			continue
 		}
-		*conn.Inbox <- message
+		*conn.Ingress <- message
 	}
 }
 

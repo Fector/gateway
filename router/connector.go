@@ -43,8 +43,7 @@ func (c *Connector) GetConnection(gateway string) (*connection.Connection, error
 func (c *Connector) StartConnection(gateway *model.Gateway) error {
 	stop := make(chan int, 1)
 	inbox := make(chan model.Message, gateway.InboxSize)
-	outbox := make(chan model.Message, gateway.OutboxSize)
-	conn, err := connection.NewConnection(gateway, &inbox, &outbox, &stop, c.Error)
+	conn, err := connection.NewConnection(gateway, &inbox, c.egress, &stop, c.Error)
 	if err != nil {
 		return err
 	}
@@ -78,8 +77,6 @@ func (c *Connector) Run() {
 				log.Printf("Error ocured in gateway %s connection: %s", gateway, err.Error())
 				delete(c.pool, gateway)
 				log.Printf("Gateway %s removed from pool.", gateway)
-			case m := <-*conn.Outbox:
-				*c.egress <- m
 			case <-c.timer.C:
 				c.timer.Reset(time.Duration(time.Second))
 			}

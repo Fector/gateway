@@ -20,8 +20,8 @@ type Connection struct {
 	rx             *protocol.Reader
 	tx             *protocol.Writer
 	gateway        *model.Gateway
-	Inbox          *chan model.Message
-	Outbox         *chan model.Message
+	Ingress        *chan model.Message
+	Egress         *chan model.Message
 	timer          *time.Ticker
 	logger         *log.Logger
 	Stop           *chan int
@@ -30,15 +30,15 @@ type Connection struct {
 
 func NewConnection(
 	gateway *model.Gateway,
-	inbox *chan model.Message,
-	outbox *chan model.Message,
+	ingress *chan model.Message,
+	egress *chan model.Message,
 	stop *chan int,
 	error *chan error,
 ) (*Connection, error) {
 	return &Connection{
 		gateway: gateway,
-		Inbox:   inbox,
-		Outbox:  outbox,
+		Ingress: ingress,
+		Egress:  egress,
 		timer:   time.NewTicker(time.Duration(gateway.EnquireLinkTime) * time.Second),
 		logger: log.New(
 			os.Stdout,
@@ -55,7 +55,7 @@ func (c *Connection) Gateway() *model.Gateway {
 }
 
 func (c *Connection) SendMessage(message *model.Message) {
-	*c.Inbox <- *message
+	*c.Ingress <- *message
 }
 
 func (c *Connection) NextSequence() uint32 {
@@ -196,7 +196,7 @@ func (c *Connection) Run() {
 	}
 	for {
 		select {
-		case m := <-*c.Inbox:
+		case m := <-*c.Ingress:
 			go c.handleMessage(&m)
 		case <-c.timer.C:
 			err := c.enquireLink()
