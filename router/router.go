@@ -4,6 +4,8 @@ import (
 	"github.com/DeathHand/gateway/callback"
 	"github.com/DeathHand/gateway/memory"
 	"github.com/DeathHand/gateway/model"
+	"log"
+	"os"
 )
 
 type Router struct {
@@ -13,6 +15,7 @@ type Router struct {
 	memory    memory.Memory
 	connector *Connector
 	callback  callback.Callback
+	logger    *log.Logger
 	error     *chan error
 }
 
@@ -30,16 +33,33 @@ func NewRouter(
 		memory:    memory,
 		connector: NewConnector(gateways, egress, error),
 		callback:  callback.NewHttpCallback(error),
-		error:     error,
+		logger: log.New(
+			os.Stdout,
+			"Router: ",
+			log.Ldate|log.Ltime|log.Lmicroseconds,
+		),
+		error: error,
 	}
 }
 
 func (r *Router) Ingress() {
+	for {
+		message := <-*r.ingress
+		conn, err := r.connector.GetConnection(message.Gateway)
+		if err != nil {
+			r.logger.Printf("Message (uid: %s) error: destination gateway (%s) not found.", message.Uuid, message.Gateway)
+			*r.egress <- message
+			continue
+		}
+		*conn.Inbox <- message
+	}
 }
 
 func (r *Router) Egress() {
-	message := <-*r.egress
-	r.callback.Add(&message)
+	for {
+		message := <-*r.egress
+		r.callback.Add(&message)
+	}
 }
 
 func (r *Router) Run() {
