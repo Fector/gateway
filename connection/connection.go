@@ -50,23 +50,15 @@ func NewConnection(
 	}, nil
 }
 
-func (c *Connection) Gateway() *model.Gateway {
-	return c.gateway
-}
-
-func (c *Connection) SendMessage(message *model.Message) {
-	*c.Ingress <- *message
-}
-
-func (c *Connection) NextSequence() uint32 {
+func (c *Connection) nextSequence() uint32 {
 	return atomic.AddUint32(c.SequenceNumber, 1)
 }
 
-func (c *Connection) UpdateTime() {
+func (c *Connection) updateTime() {
 	atomic.StoreInt64(c.LastPacketTime, time.Now().UnixNano())
 }
 
-func (c *Connection) Connect() error {
+func (c *Connection) connect() error {
 	addr := fmt.Sprintf("%s:%d", c.gateway.Host, c.gateway.Port)
 	c.logger.Printf("Connecting to %s", addr)
 	d := net.Dialer{Timeout: 5 * time.Second}
@@ -88,7 +80,7 @@ func (c *Connection) Connect() error {
 func (c *Connection) getBindPdu() (pdu.Pdu, error) {
 	header := pdu.Header{
 		CommandStatus:  protocol.EsmeRok,
-		SequenceNumber: c.NextSequence(),
+		SequenceNumber: c.nextSequence(),
 	}
 	body := pdu.BindBody{
 		SystemId:         c.gateway.SystemId,
@@ -176,10 +168,6 @@ func (c *Connection) unbind() error {
 	return nil
 }
 
-func (c *Connection) close() error {
-	return c.TCPConn.Close()
-}
-
 func (c *Connection) handleMessage(m *model.Message) {
 
 }
@@ -189,7 +177,12 @@ func (c *Connection) enquireLink() error {
 }
 
 func (c *Connection) Run() {
-	err := c.bind()
+	err := c.connect()
+	if err != nil {
+		*c.Error <- err
+		return
+	}
+	err = c.bind()
 	if err != nil {
 		*c.Error <- err
 		return
@@ -212,7 +205,7 @@ func (c *Connection) Run() {
 				return
 			}
 			c.logger.Printf("Connection unbond.")
-			err = c.close()
+			err = c.TCPConn.Close()
 			if err != nil {
 				*c.Error <- err
 				return
