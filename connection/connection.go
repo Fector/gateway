@@ -8,6 +8,7 @@ import (
 	"github.com/DeathHand/smpp/protocol"
 	"log"
 	"net"
+	"os"
 	"sync/atomic"
 	"time"
 )
@@ -24,6 +25,7 @@ type Connection struct {
 	timer          *time.Ticker
 	stop           *chan int
 	error          *chan error
+	logger         *log.Logger
 }
 
 func NewConnection(
@@ -40,6 +42,11 @@ func NewConnection(
 		timer:   time.NewTicker(time.Duration(gateway.EnquireLinkTime) * time.Second),
 		stop:    stop,
 		error:   error,
+		logger: log.New(
+			os.Stdout,
+			fmt.Sprintf("%s: ", gateway.Name),
+			log.Ldate|log.Ltime|log.Lmicroseconds,
+		),
 	}, nil
 }
 
@@ -59,12 +66,9 @@ func (c *Connection) UpdateTime() {
 	atomic.StoreInt64(c.LastPacketTime, time.Now().UnixNano())
 }
 
-func (c *Connection) Log(v ...interface{}) {
-	log.Println(fmt.Sprintf("[gateway:%s] ", c.gateway.Name), v)
-}
-
 func (c *Connection) Connect() error {
 	addr := fmt.Sprintf("%s:%d", c.gateway.Host, c.gateway.Port)
+	c.logger.Printf("Connecting to %s", addr)
 	d := net.Dialer{Timeout: 5 * time.Second}
 	conn, err := d.Dial("tcp", addr)
 	if err != nil {
@@ -77,6 +81,7 @@ func (c *Connection) Connect() error {
 	c.TCPConn = tcpConn
 	c.rx = protocol.NewReader(tcpConn)
 	c.tx = protocol.NewWriter(tcpConn)
+	c.logger.Printf("Connecting to %s successful", addr)
 	return nil
 }
 
@@ -85,60 +90,40 @@ func (c *Connection) Stop() {
 }
 
 func (c *Connection) getBindPdu() (pdu.Pdu, error) {
+	header := pdu.Header{
+		CommandStatus:  protocol.EsmeRok,
+		SequenceNumber: c.NextSequence(),
+	}
+	body := pdu.BindBody{
+		SystemId:         c.gateway.SystemId,
+		Password:         c.gateway.Password,
+		SystemType:       c.gateway.SystemType,
+		InterfaceVersion: c.gateway.InterfaceVersion,
+		AddrTon:          c.gateway.AddrTon,
+		AddrNpi:          c.gateway.AddrNpi,
+		AddressRange:     c.gateway.AddressRange,
+	}
 	switch c.gateway.BindMode {
 	case protocol.BindModeRX:
+		header.CommandId = protocol.BindReceiver
 		return &pdu.BindReceiver{
-			Header: &pdu.Header{
-				CommandId:      protocol.BindReceiver,
-				CommandStatus:  protocol.EsmeRok,
-				SequenceNumber: c.NextSequence(),
-			},
-			Body: &pdu.BindBody{
-				SystemId:         c.gateway.SystemId,
-				Password:         c.gateway.Password,
-				SystemType:       c.gateway.SystemType,
-				InterfaceVersion: c.gateway.InterfaceVersion,
-				AddrTon:          c.gateway.AddrTon,
-				AddrNpi:          c.gateway.AddrNpi,
-				AddressRange:     c.gateway.AddressRange,
-			},
-			Tlv: nil,
+			Header: &header,
+			Body:   &body,
+			Tlv:    nil,
 		}, nil
 	case protocol.BindModeTX:
+		header.CommandId = protocol.BindTransmitter
 		return &pdu.BindTransmitter{
-			Header: &pdu.Header{
-				CommandId:      protocol.BindTransmitter,
-				CommandStatus:  protocol.EsmeRok,
-				SequenceNumber: c.NextSequence(),
-			},
-			Body: &pdu.BindBody{
-				SystemId:         c.gateway.SystemId,
-				Password:         c.gateway.Password,
-				SystemType:       c.gateway.SystemType,
-				InterfaceVersion: c.gateway.InterfaceVersion,
-				AddrTon:          c.gateway.AddrTon,
-				AddrNpi:          c.gateway.AddrNpi,
-				AddressRange:     c.gateway.AddressRange,
-			},
-			Tlv: nil,
+			Header: &header,
+			Body:   &body,
+			Tlv:    nil,
 		}, nil
 	case protocol.BindModeTRX:
+		header.CommandId = protocol.BindTransceiver
 		return &pdu.BindTransceiver{
-			Header: &pdu.Header{
-				CommandId:      protocol.BindTransceiver,
-				CommandStatus:  protocol.EsmeRok,
-				SequenceNumber: c.NextSequence(),
-			},
-			Body: &pdu.BindBody{
-				SystemId:         c.gateway.SystemId,
-				Password:         c.gateway.Password,
-				SystemType:       c.gateway.SystemType,
-				InterfaceVersion: c.gateway.InterfaceVersion,
-				AddrTon:          c.gateway.AddrTon,
-				AddrNpi:          c.gateway.AddrNpi,
-				AddressRange:     c.gateway.AddressRange,
-			},
-			Tlv: nil,
+			Header: &header,
+			Body:   &body,
+			Tlv:    nil,
 		}, nil
 	}
 	return nil, errors.New("Unknown bind mode ")
@@ -154,6 +139,7 @@ func (c *Connection) checkBindResp(header *pdu.Header) error {
 }
 
 func (c *Connection) Bind() error {
+	c.logger.Printf("Binding connection")
 	req, err := c.getBindPdu()
 	if err != nil {
 		return err
@@ -186,6 +172,7 @@ func (c *Connection) Bind() error {
 	if err != nil {
 		return err
 	}
+	c.logger.Printf("Connection bond successful")
 	return nil
 }
 
