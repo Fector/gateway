@@ -7,25 +7,30 @@ import (
 )
 
 type Router struct {
-	ingress  *chan model.Message
-	egress   *chan model.Message
-	memory   memory.Memory
-	callback callback.Callback
-	error    *chan error
+	gateways  *[]model.Gateway
+	ingress   *chan model.Message
+	egress    *chan model.Message
+	memory    memory.Memory
+	connector *Connector
+	callback  callback.Callback
+	error     *chan error
 }
 
 func NewRouter(
+	gateways *[]model.Gateway,
 	ingress *chan model.Message,
 	egress *chan model.Message,
 	memory memory.Memory,
 	error *chan error,
 ) *Router {
 	return &Router{
-		ingress:  ingress,
-		egress:   egress,
-		memory:   memory,
-		callback: callback.NewHttpCallback(error),
-		error:    error,
+		gateways:  gateways,
+		ingress:   ingress,
+		egress:    egress,
+		memory:    memory,
+		connector: NewConnector(gateways, egress, error),
+		callback:  callback.NewHttpCallback(error),
+		error:     error,
 	}
 }
 
@@ -41,4 +46,5 @@ func (r *Router) Run() {
 	go r.Egress()
 	go r.Ingress()
 	go r.callback.Run()
+	go r.connector.Run()
 }

@@ -16,4 +16,6 @@ type Gateway struct {
 	ReadChanSize     int
 	WriteChanSize    int
 	EnquireLinkTime  int
+	InboxSize        int
+	OutboxSize       int
 }

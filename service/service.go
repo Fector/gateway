@@ -2,7 +2,6 @@ package service
 
 import (
 	"github.com/DeathHand/gateway/api"
-	"github.com/DeathHand/gateway/connection"
 	"github.com/DeathHand/gateway/memory"
 	"github.com/DeathHand/gateway/model"
 	"github.com/DeathHand/gateway/router"
@@ -20,7 +19,7 @@ func New(c *Config) (*Service, error) {
 	errors := make(chan error, 1)
 	ingress := make(chan model.Message, c.IngressSize)
 	egress := make(chan model.Message, c.EgressSize)
-	m, err := memory.NewMapMemory("/var/lib/memory", &errors)
+	m, err := memory.NewMapMemory(c.MapMemory.Path, &errors)
 	if err != nil {
 		return nil, err
 	}
@@ -36,6 +35,5 @@ func New(c *Config) (*Service, error) {
 func (s *Service) Run() {
 	go s.Memory.Run()
 	go api.NewApi(s.Ingress, s.Memory, s.Error).Run()
-	go connection.NewConnector(s.Config.Gateways, s.Error).Run()
-	go router.NewRouter(s.Ingress, s.Egress, s.Memory, s.Error).Run()
+	go router.NewRouter(&s.Config.Gateways, s.Ingress, s.Egress, s.Memory, s.Error).Run()
 }

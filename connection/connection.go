@@ -20,12 +20,12 @@ type Connection struct {
 	rx             *protocol.Reader
 	tx             *protocol.Writer
 	gateway        *model.Gateway
-	inbox          *chan model.Message
-	outbox         *chan model.Message
+	Inbox          *chan model.Message
+	Outbox         *chan model.Message
 	timer          *time.Ticker
-	stop           *chan int
-	error          *chan error
 	logger         *log.Logger
+	Stop           *chan int
+	Error          *chan error
 }
 
 func NewConnection(
@@ -37,16 +37,16 @@ func NewConnection(
 ) (*Connection, error) {
 	return &Connection{
 		gateway: gateway,
-		inbox:   inbox,
-		outbox:  outbox,
+		Inbox:   inbox,
+		Outbox:  outbox,
 		timer:   time.NewTicker(time.Duration(gateway.EnquireLinkTime) * time.Second),
-		stop:    stop,
-		error:   error,
 		logger: log.New(
 			os.Stdout,
 			fmt.Sprintf("%s: ", gateway.Name),
 			log.Ldate|log.Ltime|log.Lmicroseconds,
 		),
+		Stop:  stop,
+		Error: error,
 	}, nil
 }
 
@@ -55,7 +55,7 @@ func (c *Connection) Gateway() *model.Gateway {
 }
 
 func (c *Connection) SendMessage(message *model.Message) {
-	*c.inbox <- *message
+	*c.Inbox <- *message
 }
 
 func (c *Connection) NextSequence() uint32 {
@@ -83,10 +83,6 @@ func (c *Connection) Connect() error {
 	c.tx = protocol.NewWriter(tcpConn)
 	c.logger.Printf("Connecting to %s successful", addr)
 	return nil
-}
-
-func (c *Connection) Stop() {
-	*c.stop <- 1
 }
 
 func (c *Connection) getBindPdu() (pdu.Pdu, error) {
@@ -138,7 +134,7 @@ func (c *Connection) checkBindResp(header *pdu.Header) error {
 	return nil
 }
 
-func (c *Connection) Bind() error {
+func (c *Connection) bind() error {
 	c.logger.Printf("Binding connection")
 	req, err := c.getBindPdu()
 	if err != nil {
@@ -176,23 +172,53 @@ func (c *Connection) Bind() error {
 	return nil
 }
 
+func (c *Connection) unbind() error {
+	return nil
+}
+
+func (c *Connection) close() error {
+	return c.TCPConn.Close()
+}
+
 func (c *Connection) handleMessage(m *model.Message) {
 
 }
 
-func (c *Connection) enquireLink() {
-
+func (c *Connection) enquireLink() error {
+	return nil
 }
 
 func (c *Connection) Run() {
+	err := c.bind()
+	if err != nil {
+		*c.Error <- err
+		return
+	}
 	for {
 		select {
-		case m := <-*c.inbox:
+		case m := <-*c.Inbox:
 			go c.handleMessage(&m)
 		case <-c.timer.C:
-			go c.enquireLink()
-		case <-*c.stop:
-			*c.error <- errors.New("Stop flag received ")
+			err := c.enquireLink()
+			if err != nil {
+				*c.Error <- err
+				return
+			}
+		case <-*c.Stop:
+			c.logger.Printf("Stop flag received. Unbinding.")
+			err := c.unbind()
+			if err != nil {
+				*c.Error <- err
+				return
+			}
+			c.logger.Printf("Connection unbond.")
+			err = c.close()
+			if err != nil {
+				*c.Error <- err
+				return
+			}
+			c.logger.Printf("Connection closed.")
+			return
 		}
 	}
 }
