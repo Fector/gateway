@@ -17,8 +17,10 @@ type Connection struct {
 	*net.TCPConn
 	SequenceNumber *uint32
 	LastPacketTime *int64
-	rx             *protocol.Reader
-	tx             *protocol.Writer
+	rx             *chan pdu.Pdu
+	tx             *chan pdu.Pdu
+	reader         *protocol.Reader
+	writer         *protocol.Writer
 	gateway        *model.Gateway
 	Ingress        *chan model.Message
 	Egress         *chan model.Message
@@ -71,8 +73,8 @@ func (c *Connection) connect() error {
 		return errors.New("Unknown connection type ")
 	}
 	c.TCPConn = tcpConn
-	c.rx = protocol.NewReader(tcpConn)
-	c.tx = protocol.NewWriter(tcpConn)
+	c.reader = protocol.NewReader(tcpConn)
+	c.writer = protocol.NewWriter(tcpConn)
 	c.logger.Printf("Connecting to %s successful", addr)
 	return nil
 }
@@ -136,7 +138,7 @@ func (c *Connection) bind() error {
 	if err != nil {
 		return err
 	}
-	_, err = c.tx.WritePdu(&req)
+	_, err = c.writer.WritePdu(&req)
 	if err != nil {
 		return err
 	}
@@ -144,11 +146,11 @@ func (c *Connection) bind() error {
 	if err != nil {
 		return err
 	}
-	p, err := c.rx.ReadPacket()
+	p, err := c.reader.ReadPacket()
 	if err != nil {
 		return err
 	}
-	resp, err := c.rx.ReadPdu(p)
+	resp, err := c.reader.ReadPdu(p)
 	switch p := resp.(type) {
 	case pdu.BindReceiverResp:
 		return c.checkBindResp(p.Header)
@@ -166,6 +168,37 @@ func (c *Connection) bind() error {
 
 func (c *Connection) unbind() error {
 	return nil
+}
+
+func (c *Connection) receive() {
+	for {
+		data, err := c.reader.ReadPacket()
+		if err != nil {
+			*c.Error <- err
+			continue
+		}
+		dataUnit, err := c.reader.ReadPdu(data)
+		if err != nil {
+			*c.Error <- err
+			continue
+		}
+		*c.rx <- dataUnit
+	}
+}
+
+func (c *Connection) transmit() {
+	for {
+		dataUnit := <-*c.tx
+		dataUnit, err := c.writer.WritePdu(dataUnit)
+		if err != nil {
+			*c.Error <- err
+			continue
+		}
+	}
+}
+
+func (c Connection) handlerDataUnit(packet *pdu.Pdu) {
+
 }
 
 func (c *Connection) handleMessage(m *model.Message) {
@@ -187,10 +220,14 @@ func (c *Connection) Run() {
 		*c.Error <- err
 		return
 	}
+	go c.transmit()
+	go c.receive()
 	for {
 		select {
 		case m := <-*c.Ingress:
 			go c.handleMessage(&m)
+		case p := <-*c.rx:
+			go c.handlerDataUnit(&p)
 		case <-c.timer.C:
 			err := c.enquireLink()
 			if err != nil {
