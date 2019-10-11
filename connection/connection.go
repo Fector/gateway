@@ -17,8 +17,7 @@ type Connection struct {
 	*net.TCPConn
 	SequenceNumber *uint32
 	LastPacketTime *int64
-	rx             *chan pdu.Pdu
-	tx             *chan pdu.Pdu
+	rx             *chan []byte
 	reader         *protocol.Reader
 	writer         *protocol.Writer
 	gateway        *model.Gateway
@@ -32,6 +31,7 @@ type Connection struct {
 
 func NewConnection(
 	gateway *model.Gateway,
+	rx *chan []byte,
 	ingress *chan model.Message,
 	egress *chan model.Message,
 	stop *chan int,
@@ -39,6 +39,7 @@ func NewConnection(
 ) (*Connection, error) {
 	return &Connection{
 		gateway: gateway,
+		rx:      rx,
 		Ingress: ingress,
 		Egress:  egress,
 		timer:   time.NewTicker(time.Duration(gateway.EnquireLinkTime) * time.Second),
@@ -158,27 +159,11 @@ func (c *Connection) receive() {
 			*c.Error <- err
 			continue
 		}
-		dataUnit, err := c.reader.ReadPdu(data)
-		if err != nil {
-			*c.Error <- err
-			continue
-		}
-		*c.rx <- dataUnit
+		*c.rx <- *data
 	}
 }
 
-func (c *Connection) transmit() {
-	for {
-		dataUnit := <-*c.tx
-		dataUnit, err := c.writer.WritePdu(dataUnit)
-		if err != nil {
-			*c.Error <- err
-			continue
-		}
-	}
-}
-
-func (c Connection) handlerDataUnit(packet *pdu.Pdu) {
+func (c Connection) handlePacket(p *[]byte) {
 
 }
 
@@ -187,7 +172,32 @@ func (c *Connection) handleMessage(m *model.Message) {
 }
 
 func (c *Connection) enquireLink() error {
-	return nil
+	req := pdu.NewEnquireLink(c.nextSequence())
+	_, err := c.writer.WritePdu(&req)
+	if err != nil {
+		return err
+	}
+	err = c.TCPConn.SetReadDeadline(time.Now().Add(time.Duration(c.gateway.BindTimeout) * time.Second))
+	if err != nil {
+		return err
+	}
+	data, err := c.reader.ReadPacket()
+	if err != nil {
+		return err
+	}
+	rep, err := c.reader.ReadPdu(data)
+	if err != nil {
+		return err
+	}
+	if response, ok := rep.(pdu.EnquireLinkResp); ok {
+		if response.Header.CommandStatus != protocol.EsmeRok {
+			return errors.New(
+				fmt.Sprintf("Wrong link response status: %s", protocol.GetStatusName(response.Header.CommandStatus)),
+			)
+		}
+		return nil
+	}
+	return errors.New("Enquire Link failed. Wrong response operation ")
 }
 
 func (c *Connection) Run() {
@@ -201,14 +211,13 @@ func (c *Connection) Run() {
 		*c.Error <- err
 		return
 	}
-	go c.transmit()
 	go c.receive()
 	for {
 		select {
 		case m := <-*c.Ingress:
 			go c.handleMessage(&m)
 		case p := <-*c.rx:
-			go c.handlerDataUnit(&p)
+			go c.handlePacket(&p)
 		case <-c.timer.C:
 			err := c.enquireLink()
 			if err != nil {
