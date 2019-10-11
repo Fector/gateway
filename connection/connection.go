@@ -96,7 +96,7 @@ func (c *Connection) getBindPdu() (pdu.Pdu, error) {
 	case protocol.BindModeTX:
 		return pdu.NewBindTransmitter(c.nextSequence(), &body), nil
 	case protocol.BindModeTRX:
-		return pdu.NewBindTransmitter(c.nextSequence(), &body), nil
+		return pdu.NewBindTransceiver(c.nextSequence(), &body), nil
 	}
 	return nil, errors.New("Unknown bind mode ")
 }
