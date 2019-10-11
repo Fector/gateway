@@ -14,6 +14,7 @@ type Gateway struct {
 	AddrNpi            uint32
 	AddressRange       string
 	ReadChanSize       int
+	EnquireLinkTime    int
 	EnquireLinkTimeout int
 	InboxSize          int
 	OutboxSize         int
