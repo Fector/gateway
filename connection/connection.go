@@ -80,10 +80,6 @@ func (c *Connection) connect() error {
 }
 
 func (c *Connection) getBindPdu() (pdu.Pdu, error) {
-	header := pdu.Header{
-		CommandStatus:  protocol.EsmeRok,
-		SequenceNumber: c.nextSequence(),
-	}
 	body := pdu.BindBody{
 		SystemId:         c.gateway.SystemId,
 		Password:         c.gateway.Password,
@@ -95,26 +91,11 @@ func (c *Connection) getBindPdu() (pdu.Pdu, error) {
 	}
 	switch c.gateway.BindMode {
 	case protocol.BindModeRX:
-		header.CommandId = protocol.BindReceiver
-		return &pdu.BindReceiver{
-			Header: &header,
-			Body:   &body,
-			Tlv:    nil,
-		}, nil
+		return pdu.NewBindReceiver(c.nextSequence(), &body), nil
 	case protocol.BindModeTX:
-		header.CommandId = protocol.BindTransmitter
-		return &pdu.BindTransmitter{
-			Header: &header,
-			Body:   &body,
-			Tlv:    nil,
-		}, nil
+		return pdu.NewBindTransmitter(c.nextSequence(), &body), nil
 	case protocol.BindModeTRX:
-		header.CommandId = protocol.BindTransceiver
-		return &pdu.BindTransceiver{
-			Header: &header,
-			Body:   &body,
-			Tlv:    nil,
-		}, nil
+		return pdu.NewBindTransmitter(c.nextSequence(), &body), nil
 	}
 	return nil, errors.New("Unknown bind mode ")
 }
