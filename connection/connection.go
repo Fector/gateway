@@ -177,7 +177,7 @@ func (c *Connection) enquireLink() error {
 	if err != nil {
 		return err
 	}
-	err = c.TCPConn.SetReadDeadline(time.Now().Add(time.Duration(c.gateway.BindTimeout) * time.Second))
+	err = c.TCPConn.SetReadDeadline(time.Now().Add(time.Duration(c.gateway.EnquireLinkTimeout) * time.Second))
 	if err != nil {
 		return err
 	}
@@ -195,7 +195,7 @@ func (c *Connection) enquireLink() error {
 				fmt.Sprintf("Wrong link response status: %s", protocol.GetStatusName(response.Header.CommandStatus)),
 			)
 		}
-		return nil
+		return c.TCPConn.SetReadDeadline(time.Time{})
 	}
 	return errors.New("Enquire Link failed. Wrong response operation ")
 }
